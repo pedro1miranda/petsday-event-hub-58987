@@ -7,15 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PetData } from "@/types/form-types";
-import { Plus, Trash2, Upload, Heart } from "lucide-react";
-import { useState } from "react";
+import { Plus, Trash2, Heart } from "lucide-react";
 import { z } from "zod";
 
 const petsFormSchema = z.object({
   pets: z.array(z.object({
     nomePet: z.string().min(1, "Nome do pet é obrigatório"),
-    tipo: z.enum(["Cachorro", "Gato", "Pássaro", "Outro"]),
-    fotoPet: z.instanceof(File).optional()
+    tipo: z.enum(["Cachorro", "Gato", "Pássaro", "Outro"])
   })).min(1, "Pelo menos um pet deve ser cadastrado")
 });
 
@@ -28,12 +26,10 @@ interface PetsFormProps {
 }
 
 export function PetsForm({ onSubmit, onBack, initialData }: PetsFormProps) {
-  const [previews, setPreviews] = useState<{ [key: number]: string }>({});
-
   const form = useForm<PetsFormData>({
     resolver: zodResolver(petsFormSchema),
     defaultValues: {
-      pets: initialData?.length ? initialData : [{ nomePet: "", tipo: "Cachorro" as const, fotoPet: undefined }]
+      pets: initialData?.length ? initialData : [{ nomePet: "", tipo: "Cachorro" as const }]
     }
   });
 
@@ -42,39 +38,13 @@ export function PetsForm({ onSubmit, onBack, initialData }: PetsFormProps) {
     name: "pets"
   });
 
-  const handleImageChange = (index: number, file: File | null) => {
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviews(prev => ({
-          ...prev,
-          [index]: reader.result as string
-        }));
-      };
-      reader.readAsDataURL(file);
-      form.setValue(`pets.${index}.fotoPet`, file);
-    } else {
-      setPreviews(prev => {
-        const newPreviews = { ...prev };
-        delete newPreviews[index];
-        return newPreviews;
-      });
-      form.setValue(`pets.${index}.fotoPet`, undefined);
-    }
-  };
-
   const addPet = () => {
-    append({ nomePet: "", tipo: "Cachorro" as const, fotoPet: undefined });
+    append({ nomePet: "", tipo: "Cachorro" as const });
   };
 
   const removePet = (index: number) => {
     if (fields.length > 1) {
       remove(index);
-      setPreviews(prev => {
-        const newPreviews = { ...prev };
-        delete newPreviews[index];
-        return newPreviews;
-      });
     }
   };
 
@@ -163,53 +133,6 @@ export function PetsForm({ onSubmit, onBack, initialData }: PetsFormProps) {
                     )}
                   />
                 </div>
-
-                {/* Foto do Pet */}
-                <FormField
-                  control={form.control}
-                  name={`pets.${index}.fotoPet`}
-                  render={({ field: { onChange, ...field } }) => (
-                    <FormItem>
-                      <FormLabel>Foto do Pet (opcional)</FormLabel>
-                      <FormControl>
-                        <div className="space-y-4">
-                          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
-                            <Input
-                              type="file"
-                              accept="image/jpeg,image/png,image/jpg"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0] || null;
-                                handleImageChange(index, file);
-                              }}
-                              className="hidden"
-                              id={`file-${index}`}
-                            />
-                            <Label 
-                              htmlFor={`file-${index}`} 
-                              className="cursor-pointer flex flex-col items-center space-y-2"
-                            >
-                              <Upload className="w-8 h-8 text-muted-foreground" />
-                              <span className="text-sm text-muted-foreground">
-                                Clique para enviar uma foto (JPG, PNG - máx 5MB)
-                              </span>
-                            </Label>
-                          </div>
-                          
-                          {previews[index] && (
-                            <div className="flex justify-center">
-                              <img
-                                src={previews[index]}
-                                alt="Preview"
-                                className="w-32 h-32 object-cover rounded-lg border"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
           ))}
