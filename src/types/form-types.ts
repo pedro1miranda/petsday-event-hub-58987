@@ -21,7 +21,14 @@ export const tutorSchema = z.object({
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Senha deve conter ao menos uma letra minúscula, uma maiúscula e um número"),
   
   consentimentoLGPD: z.boolean()
-    .refine(val => val === true, "Consentimento LGPD é obrigatório")
+    .refine(val => val === true, "Consentimento LGPD é obrigatório"),
+  
+  redesSociais: z.string()
+    .max(255, "Redes sociais deve ter no máximo 255 caracteres")
+    .optional(),
+  
+  autorizacaoPublicacao: z.boolean()
+    .default(false)
 });
 
 // Esquema para dados do pet

@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { TutorData, tutorSchema } from "@/types/form-types";
 import { useState } from "react";
-import { Eye, EyeOff, User, Mail, Phone, Lock } from "lucide-react";
+import { Eye, EyeOff, User, Mail, Phone, Lock, Share2, Image as ImageIcon } from "lucide-react";
 
 interface TutorFormProps {
   onNext: (data: TutorData) => void;
@@ -25,6 +26,8 @@ export function TutorForm({ onNext, initialData }: TutorFormProps) {
       telefone: "",
       senha: "",
       consentimentoLGPD: false,
+      redesSociais: "",
+      autorizacaoPublicacao: false,
     },
   });
 
@@ -164,6 +167,31 @@ export function TutorForm({ onNext, initialData }: TutorFormProps) {
             )}
           />
 
+          {/* Redes Sociais */}
+          <FormField
+            control={form.control}
+            name="redesSociais"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center space-x-2">
+                  <Share2 className="w-4 h-4" />
+                  <span>Redes Sociais (Opcional)</span>
+                </FormLabel>
+                <FormControl>
+                  <Textarea 
+                    placeholder="Instagram, Facebook, etc."
+                    {...field}
+                    className="min-h-[80px]"
+                  />
+                </FormControl>
+                <p className="text-xs text-muted-foreground">
+                  Cole os links das suas redes sociais (opcional)
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           {/* Consentimento LGPD */}
           <FormField
             control={form.control}
@@ -188,7 +216,32 @@ export function TutorForm({ onNext, initialData }: TutorFormProps) {
             )}
           />
 
-          <Button 
+          {/* Autorização de Publicação */}
+          <FormField
+            control={form.control}
+            name="autorizacaoPublicacao"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 border-primary/30 bg-primary/5">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="text-sm font-body flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4" />
+                    Autorização para Publicação de Imagens
+                  </FormLabel>
+                  <p className="text-xs text-muted-foreground">
+                    Autorizo a publicação de fotos e vídeos do meu pet nas redes sociais e materiais de divulgação do evento PETs DAY.
+                  </p>
+                </div>
+              </FormItem>
+            )}
+          />
+
+          <Button
             type="submit" 
             size="lg" 
             className="w-full hover-lift"

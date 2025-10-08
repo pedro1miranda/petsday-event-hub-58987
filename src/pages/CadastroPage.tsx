@@ -3,6 +3,7 @@ import { Navigation } from "@/components/ui/navigation";
 import { Footer } from "@/components/ui/footer";
 import { TutorForm } from "@/components/forms/tutor-form";
 import { PetsForm } from "@/components/forms/pets-form";
+import { ColaboradorLogin } from "@/components/forms/colaborador-login";
 import { Card, CardContent } from "@/components/ui/card";
 import { TutorData, PetData } from "@/types/form-types";
 import { Check, User, Heart, PartyPopper } from "lucide-react";
@@ -99,14 +100,19 @@ export default function CadastroPage() {
           {/* Form Content */}
           <div className="max-w-4xl mx-auto">
             {currentStep === "tutor" && (
-              <Card className="border-2">
-                <CardContent className="p-8">
-                  <TutorForm 
-                    onNext={handleTutorNext}
-                    initialData={tutorData || undefined}
-                  />
-                </CardContent>
-              </Card>
+              <>
+                <Card className="border-2">
+                  <CardContent className="p-8">
+                    <TutorForm 
+                      onNext={handleTutorNext}
+                      initialData={tutorData || undefined}
+                    />
+                  </CardContent>
+                </Card>
+                
+                {/* Login para Colaboradores */}
+                <ColaboradorLogin />
+              </>
             )}
 
             {currentStep === "pets" && (
