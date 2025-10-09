@@ -8,6 +8,7 @@ import CadastroPage from "./pages/CadastroPage";
 import PatrocinadoresPage from "./pages/PatrocinadoresPage";
 import NumeroSortePage from "./pages/NumeroSortePage";
 import BuscaPage from "./pages/BuscaPage";
+import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/cadastro" element={<CadastroPage />} />
           <Route path="/patrocinadores" element={<PatrocinadoresPage />} />
           <Route path="/numero-sorte" element={<NumeroSortePage />} />
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="/busca" element={<BuscaPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
