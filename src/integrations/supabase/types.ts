@@ -14,16 +14,143 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lucky_numbers: {
+        Row: {
+          generated_at: string | null
+          id: string
+          lucky_number: string
+          pet_id: string
+        }
+        Insert: {
+          generated_at?: string | null
+          id?: string
+          lucky_number: string
+          pet_id: string
+        }
+        Update: {
+          generated_at?: string | null
+          id?: string
+          lucky_number?: string
+          pet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lucky_numbers_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: true
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pets: {
+        Row: {
+          breed: string | null
+          created_at: string | null
+          id: string
+          owner_id: string
+          pet_name: string
+          species: Database["public"]["Enums"]["pet_species"]
+          updated_at: string | null
+        }
+        Insert: {
+          breed?: string | null
+          created_at?: string | null
+          id?: string
+          owner_id: string
+          pet_name: string
+          species: Database["public"]["Enums"]["pet_species"]
+          updated_at?: string | null
+        }
+        Update: {
+          breed?: string | null
+          created_at?: string | null
+          id?: string
+          owner_id?: string
+          pet_name?: string
+          species?: Database["public"]["Enums"]["pet_species"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          full_name: string
+          id: string
+          image_publication_consent: boolean | null
+          lgpd_consent: boolean | null
+          phone: string | null
+          social_media: string | null
+          status: Database["public"]["Enums"]["user_status"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          full_name: string
+          id: string
+          image_publication_consent?: boolean | null
+          lgpd_consent?: boolean | null
+          phone?: string | null
+          social_media?: string | null
+          status?: Database["public"]["Enums"]["user_status"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          image_publication_consent?: boolean | null
+          lgpd_consent?: boolean | null
+          phone?: string | null
+          social_media?: string | null
+          status?: Database["public"]["Enums"]["user_status"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_lucky_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "staff" | "tutor"
+      pet_species: "dog" | "cat" | "bird" | "other"
+      user_status: "active" | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +277,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["staff", "tutor"],
+      pet_species: ["dog", "cat", "bird", "other"],
+      user_status: ["active", "inactive"],
+    },
   },
 } as const
