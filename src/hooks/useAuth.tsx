@@ -48,20 +48,20 @@ export function useAuth(requireStaff = false) {
   const checkStaffRole = async (userId: string) => {
     try {
       const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "staff")
+        .from("colaboradores")
+        .select("status")
+        .eq("auth_uid", userId)
+        .eq("status", true)
         .maybeSingle();
 
       if (error) {
-        console.error("Error checking role:", error);
+        console.error("Error checking staff role:", error);
         setIsStaff(false);
       } else {
         setIsStaff(!!data);
       }
     } catch (error) {
-      console.error("Error checking role:", error);
+      console.error("Error checking staff role:", error);
       setIsStaff(false);
     } finally {
       setLoading(false);
