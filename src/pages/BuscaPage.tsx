@@ -1,35 +1,40 @@
+import { Navigation } from "@/components/ui/navigation";
+import { Footer } from "@/components/ui/footer";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search, User, Heart, Ticket, LogOut, Phone, Mail } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Footer } from "@/components/ui/footer";
-import { Navigation } from "@/components/ui/navigation";
-import { Search, User, Heart, Hash, Phone, Mail, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-type SearchType = "all" | "tutor" | "pet" | "luckyNumber";
-
-interface SearchResult {
-  tutor_id: string;
-  tutor_nome: string;
-  pet_id: string;
-  pet_nome: string;
-  especie: string | null;
-  breed: string | null;
-  numero_sorte: number | null;
-  telefone: string | null;
-  email: string | null;
-  redes_sociais: string | null;
-  lgpd_consent: boolean;
-  image_publication_consent: boolean;
-}
+type SearchResult = {
+  id: string;
+  tutorName: string;
+  tutorEmail: string;
+  tutorPhone: string;
+  tutorSocialMedia: string;
+  tutorStatus: string;
+  lgpdConsent: boolean;
+  imagePublicationConsent: boolean;
+  petName?: string;
+  petSpecies?: string;
+  petBreed?: string;
+  luckyNumber?: string;
+};
 
 export default function BuscaPage() {
-  const { isStaff, loading, signOut } = useAuth(true);
+  const { user, isStaff, loading, signOut } = useAuth(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState<"tutor" | "pet" | "numero">("tutor");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<SearchResult | null>(null);
@@ -40,26 +45,167 @@ export default function BuscaPage() {
     } else {
       setResults([]);
     }
-  }, [searchTerm]);
+  }, [searchTerm, searchType]);
 
   const handleSearch = async () => {
+    if (!searchTerm.trim()) return;
+    
     setIsSearching(true);
     try {
-      const { data, error } = await supabase.rpc('buscar_usuarios', {
-        search_term: searchTerm
-      });
+      let query;
 
-      if (error) {
-        console.error("Search error:", error);
-        toast.error("Erro ao realizar busca");
-        setResults([]);
-        return;
+      if (searchType === "tutor") {
+        query = supabase
+          .from("profiles")
+          .select(`
+            id,
+            full_name,
+            email,
+            phone,
+            social_media,
+            status,
+            lgpd_consent,
+            image_publication_consent,
+            pets (
+              id,
+              pet_name,
+              species,
+              breed,
+              lucky_numbers (
+                lucky_number
+              )
+            )
+          `)
+          .or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+      } else if (searchType === "pet") {
+        query = supabase
+          .from("pets")
+          .select(`
+            id,
+            pet_name,
+            species,
+            breed,
+            owner_id,
+            profiles!pets_owner_id_fkey (
+              id,
+              full_name,
+              email,
+              phone,
+              social_media,
+              status,
+              lgpd_consent,
+              image_publication_consent
+            ),
+            lucky_numbers (
+              lucky_number
+            )
+          `)
+          .ilike("pet_name", `%${searchTerm}%`);
+      } else {
+        query = supabase
+          .from("lucky_numbers")
+          .select(`
+            lucky_number,
+            pets!inner (
+              id,
+              pet_name,
+              species,
+              breed,
+              owner_id,
+              profiles!pets_owner_id_fkey (
+                id,
+                full_name,
+                email,
+                phone,
+                social_media,
+                status,
+                lgpd_consent,
+                image_publication_consent
+              )
+            )
+          `)
+          .ilike("lucky_number", `%${searchTerm}%`);
       }
 
-      setResults(data || []);
-    } catch (error) {
-      console.error("Unexpected error:", error);
-      toast.error("Erro inesperado ao buscar");
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const transformedResults: SearchResult[] = [];
+
+      if (searchType === "tutor" && data) {
+        data.forEach((profile: any) => {
+          if (profile.pets && profile.pets.length > 0) {
+            profile.pets.forEach((pet: any) => {
+              transformedResults.push({
+                id: `${profile.id}-${pet.id}`,
+                tutorName: profile.full_name,
+                tutorEmail: profile.email || "",
+                tutorPhone: profile.phone || "",
+                tutorSocialMedia: profile.social_media || "",
+                tutorStatus: profile.status,
+                lgpdConsent: profile.lgpd_consent,
+                imagePublicationConsent: profile.image_publication_consent,
+                petName: pet.pet_name,
+                petSpecies: pet.species,
+                petBreed: pet.breed || "",
+                luckyNumber: pet.lucky_numbers?.[0]?.lucky_number || "",
+              });
+            });
+          } else {
+            transformedResults.push({
+              id: profile.id,
+              tutorName: profile.full_name,
+              tutorEmail: profile.email || "",
+              tutorPhone: profile.phone || "",
+              tutorSocialMedia: profile.social_media || "",
+              tutorStatus: profile.status,
+              lgpdConsent: profile.lgpd_consent,
+              imagePublicationConsent: profile.image_publication_consent,
+            });
+          }
+        });
+      } else if (searchType === "pet" && data) {
+        data.forEach((pet: any) => {
+          transformedResults.push({
+            id: pet.id,
+            tutorName: pet.profiles?.full_name || "",
+            tutorEmail: pet.profiles?.email || "",
+            tutorPhone: pet.profiles?.phone || "",
+            tutorSocialMedia: pet.profiles?.social_media || "",
+            tutorStatus: pet.profiles?.status || "",
+            lgpdConsent: pet.profiles?.lgpd_consent || false,
+            imagePublicationConsent: pet.profiles?.image_publication_consent || false,
+            petName: pet.pet_name,
+            petSpecies: pet.species,
+            petBreed: pet.breed || "",
+            luckyNumber: pet.lucky_numbers?.[0]?.lucky_number || "",
+          });
+        });
+      } else if (searchType === "numero" && data) {
+        data.forEach((lucky: any) => {
+          const pet = lucky.pets;
+          transformedResults.push({
+            id: pet.id,
+            tutorName: pet.profiles?.full_name || "",
+            tutorEmail: pet.profiles?.email || "",
+            tutorPhone: pet.profiles?.phone || "",
+            tutorSocialMedia: pet.profiles?.social_media || "",
+            tutorStatus: pet.profiles?.status || "",
+            lgpdConsent: pet.profiles?.lgpd_consent || false,
+            imagePublicationConsent: pet.profiles?.image_publication_consent || false,
+            petName: pet.pet_name,
+            petSpecies: pet.species,
+            petBreed: pet.breed || "",
+            luckyNumber: lucky.lucky_number,
+          });
+        });
+      }
+
+      setResults(transformedResults);
+    } catch (error: any) {
+      console.error("Search error:", error);
+      toast.error("Erro ao buscar dados: " + error.message);
     } finally {
       setIsSearching(false);
     }
@@ -87,7 +233,7 @@ export default function BuscaPage() {
       <main className="py-12">
         <div className="container mx-auto px-4">
           <div className="text-center space-y-6 mb-12">
-            <h1 className="text-4xl md:text-5xl font-heading font-bold">
+            <h1 className="text-4xl md:text-5xl font-heading font-bold text-foreground">
               Busca de <span className="gradient-text">Participantes</span>
             </h1>
             <p className="text-xl text-muted-foreground font-body max-w-2xl mx-auto">
@@ -103,12 +249,43 @@ export default function BuscaPage() {
                   <span>Pesquisar</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    variant={searchType === "tutor" ? "default" : "outline"}
+                    onClick={() => setSearchType("tutor")}
+                    className="flex items-center space-x-2"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Tutor</span>
+                  </Button>
+                  <Button
+                    variant={searchType === "pet" ? "default" : "outline"}
+                    onClick={() => setSearchType("pet")}
+                    className="flex items-center space-x-2"
+                  >
+                    <Heart className="w-4 h-4" />
+                    <span>Pet</span>
+                  </Button>
+                  <Button
+                    variant={searchType === "numero" ? "default" : "outline"}
+                    onClick={() => setSearchType("numero")}
+                    className="flex items-center space-x-2"
+                  >
+                    <Ticket className="w-4 h-4" />
+                    <span>Número da Sorte</span>
+                  </Button>
+                </div>
+
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
                     type="text"
-                    placeholder="Digite o nome do tutor, pet ou número da sorte..."
+                    placeholder={
+                      searchType === "tutor" ? "Digite o nome ou e-mail do tutor..." :
+                      searchType === "pet" ? "Digite o nome do pet..." :
+                      "Digite o número da sorte..."
+                    }
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 h-12"
@@ -121,7 +298,7 @@ export default function BuscaPage() {
           {searchTerm && (
             <div className="max-w-4xl mx-auto space-y-6">
               <div className="space-y-4">
-                <h2 className="text-2xl font-heading font-semibold">
+                <h2 className="text-2xl font-heading font-semibold text-foreground">
                   Resultados ({results.length})
                 </h2>
                 
@@ -133,47 +310,57 @@ export default function BuscaPage() {
                   </Card>
                 ) : results.length > 0 ? (
                   <div className="grid gap-4">
-                    {results.map((result, index) => (
-                      <Card key={`${result.pet_id}-${index}`} className="hover:shadow-lg transition-shadow">
+                    {results.map((result) => (
+                      <Card key={result.id} className="hover:shadow-lg transition-shadow">
                         <CardContent className="p-6">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <User className="h-4 w-4 text-primary" />
-                                <h3 className="font-semibold text-lg">{result.tutor_nome}</h3>
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-start">
+                              <div className="space-y-2 flex-1">
+                                <h4 className="text-xl font-heading font-semibold text-foreground">
+                                  {result.tutorName}
+                                </h4>
+                                <div className="space-y-1 text-sm text-muted-foreground">
+                                  {result.tutorEmail && (
+                                    <p className="flex items-center gap-2">
+                                      <Mail className="w-4 h-4" />
+                                      {result.tutorEmail}
+                                    </p>
+                                  )}
+                                  {result.tutorPhone && (
+                                    <p className="flex items-center gap-2">
+                                      <Phone className="w-4 h-4" />
+                                      {result.tutorPhone}
+                                    </p>
+                                  )}
+                                </div>
+                                {result.petName && (
+                                  <div className="pt-2 border-t">
+                                    <p className="text-sm font-medium text-foreground">
+                                      Pet: {result.petName}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {result.petSpecies} {result.petBreed && `- ${result.petBreed}`}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <Heart className="h-4 w-4 text-muted-foreground" />
-                                <p className="text-muted-foreground">
-                                  {result.pet_nome} ({result.especie || "N/A"})
-                                </p>
+                              <div className="flex flex-col gap-2 items-end">
+                                {result.luckyNumber && (
+                                  <div className="bg-secondary/10 rounded-lg px-4 py-2">
+                                    <p className="text-xs text-muted-foreground mb-1">Número da Sorte</p>
+                                    <p className="text-lg font-bold font-heading text-secondary">
+                                      {result.luckyNumber}
+                                    </p>
+                                  </div>
+                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedDetail(result)}
+                                >
+                                  Ver detalhes
+                                </Button>
                               </div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <Hash className="h-4 w-4 text-muted-foreground" />
-                                <p className="text-sm">
-                                  Número da Sorte: <span className="font-bold text-primary">
-                                    {result.numero_sorte ? String(result.numero_sorte).padStart(6, '0') : "N/A"}
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedDetail(result)}
-                            >
-                              Ver detalhes
-                            </Button>
-                          </div>
-                          
-                          <div className="space-y-1 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-3 w-3" />
-                              <span>{result.telefone || "Não informado"}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-3 w-3" />
-                              <span>{result.email || "Não informado"}</span>
                             </div>
                           </div>
                         </CardContent>
@@ -198,7 +385,7 @@ export default function BuscaPage() {
                 Digite algo para começar a busca
               </h3>
               <p className="text-muted-foreground font-body">
-                Pesquise por nome do tutor, pet ou número da sorte
+                Selecione o tipo de busca e digite o termo desejado
               </p>
             </div>
           )}
@@ -209,51 +396,68 @@ export default function BuscaPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Detalhes do Cadastro</DialogTitle>
+            <DialogDescription>
+              Informações completas sobre o tutor
+            </DialogDescription>
           </DialogHeader>
           {selectedDetail && (
             <div className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-2">Informações do Tutor</h4>
+                <h4 className="font-semibold text-foreground mb-2">Informações do Tutor</h4>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Nome:</span> {selectedDetail.tutor_nome}</p>
-                  <p><span className="font-medium">Email:</span> {selectedDetail.email || "Não informado"}</p>
-                  <p><span className="font-medium">Telefone:</span> {selectedDetail.telefone || "Não informado"}</p>
-                  <p><span className="font-medium">Redes Sociais:</span> {selectedDetail.redes_sociais || "Não informado"}</p>
+                  <p><span className="font-medium">Nome:</span> {selectedDetail.tutorName}</p>
+                  {selectedDetail.tutorEmail && (
+                    <p><span className="font-medium">E-mail:</span> {selectedDetail.tutorEmail}</p>
+                  )}
+                  {selectedDetail.tutorPhone && (
+                    <p><span className="font-medium">Telefone:</span> {selectedDetail.tutorPhone}</p>
+                  )}
+                  {selectedDetail.tutorSocialMedia && (
+                    <p><span className="font-medium">Redes Sociais:</span> {selectedDetail.tutorSocialMedia}</p>
+                  )}
+                  <p>
+                    <span className="font-medium">Status:</span>{" "}
+                    <span className={selectedDetail.tutorStatus === "active" ? "text-green-600" : "text-red-600"}>
+                      {selectedDetail.tutorStatus === "active" ? "Ativo" : "Inativo"}
+                    </span>
+                  </p>
                 </div>
               </div>
               
               <div>
-                <h4 className="font-semibold mb-2">Informações do Pet</h4>
-                <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Nome:</span> {selectedDetail.pet_nome}</p>
-                  <p><span className="font-medium">Espécie:</span> {selectedDetail.especie || "Não informado"}</p>
-                  <p><span className="font-medium">Raça:</span> {selectedDetail.breed || "Não informado"}</p>
-                  <p><span className="font-medium">Número da Sorte:</span> {selectedDetail.numero_sorte ? String(selectedDetail.numero_sorte).padStart(6, '0') : "Não gerado"}</p>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold mb-2">Consentimentos</h4>
-                <div className="space-y-2 text-sm">
+                <h4 className="font-semibold text-foreground mb-2">Permissões</h4>
+                <div className="space-y-1 text-sm">
                   <p>
                     <span className="font-medium">LGPD:</span>{" "}
-                    <span className={selectedDetail.lgpd_consent ? "text-green-600" : "text-red-600"}>
-                      {selectedDetail.lgpd_consent ? "Aceito" : "Não aceito"}
-                    </span>
+                    {selectedDetail.lgpdConsent ? "✅ Aceito" : "❌ Não aceito"}
                   </p>
                   <p>
                     <span className="font-medium">Publicação de Imagens:</span>{" "}
-                    <span className={selectedDetail.image_publication_consent ? "text-green-600" : "text-red-600"}>
-                      {selectedDetail.image_publication_consent ? "Aceito" : "Não aceito"}
-                    </span>
+                    {selectedDetail.imagePublicationConsent ? "✅ Autorizado" : "❌ Não autorizado"}
                   </p>
                 </div>
               </div>
+
+              {selectedDetail.petName && (
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">Informações do Pet</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="font-medium">Nome:</span> {selectedDetail.petName}</p>
+                    <p><span className="font-medium">Espécie:</span> {selectedDetail.petSpecies}</p>
+                    {selectedDetail.petBreed && (
+                      <p><span className="font-medium">Raça:</span> {selectedDetail.petBreed}</p>
+                    )}
+                    {selectedDetail.luckyNumber && (
+                      <p><span className="font-medium">Número da Sorte:</span> {selectedDetail.luckyNumber}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
-
+      
       <Footer />
     </div>
   );
