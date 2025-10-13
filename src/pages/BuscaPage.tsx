@@ -18,23 +18,24 @@ import {
 
 type SearchResult = {
   id: string;
+  tutorId: string;
   tutorName: string;
   tutorEmail: string;
   tutorPhone: string;
   tutorSocialMedia: string;
-  tutorStatus: string;
   lgpdConsent: boolean;
   imagePublicationConsent: boolean;
-  petName?: string;
-  petSpecies?: string;
-  petBreed?: string;
-  luckyNumber?: string;
+  petId: string;
+  petName: string;
+  petSpecies: string;
+  petBreed: string;
+  luckyNumber: number | null;
 };
 
 export default function BuscaPage() {
   const { user, isStaff, loading, signOut } = useAuth(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchType, setSearchType] = useState<"tutor" | "pet" | "numero">("tutor");
+  
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<SearchResult | null>(null);
@@ -45,162 +46,35 @@ export default function BuscaPage() {
     } else {
       setResults([]);
     }
-  }, [searchTerm, searchType]);
+  }, [searchTerm]);
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
-    
+
     setIsSearching(true);
     try {
-      let query;
-
-      if (searchType === "tutor") {
-        query = supabase
-          .from("profiles")
-          .select(`
-            id,
-            full_name,
-            email,
-            phone,
-            social_media,
-            status,
-            lgpd_consent,
-            image_publication_consent,
-            pets (
-              id,
-              pet_name,
-              species,
-              breed,
-              lucky_numbers (
-                lucky_number
-              )
-            )
-          `)
-          .or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
-      } else if (searchType === "pet") {
-        query = supabase
-          .from("pets")
-          .select(`
-            id,
-            pet_name,
-            species,
-            breed,
-            owner_id,
-            profiles!pets_owner_id_fkey (
-              id,
-              full_name,
-              email,
-              phone,
-              social_media,
-              status,
-              lgpd_consent,
-              image_publication_consent
-            ),
-            lucky_numbers (
-              lucky_number
-            )
-          `)
-          .ilike("pet_name", `%${searchTerm}%`);
-      } else {
-        query = supabase
-          .from("lucky_numbers")
-          .select(`
-            lucky_number,
-            pets!inner (
-              id,
-              pet_name,
-              species,
-              breed,
-              owner_id,
-              profiles!pets_owner_id_fkey (
-                id,
-                full_name,
-                email,
-                phone,
-                social_media,
-                status,
-                lgpd_consent,
-                image_publication_consent
-              )
-            )
-          `)
-          .ilike("lucky_number", `%${searchTerm}%`);
-      }
-
-      const { data, error } = await query;
+      // Call the RPC function instead of direct table queries
+      const { data, error } = await supabase
+        .rpc('buscar_usuarios', { search_term: searchTerm });
 
       if (error) throw error;
 
-      const transformedResults: SearchResult[] = [];
-
-      if (searchType === "tutor" && data) {
-        data.forEach((profile: any) => {
-          if (profile.pets && profile.pets.length > 0) {
-            profile.pets.forEach((pet: any) => {
-              transformedResults.push({
-                id: `${profile.id}-${pet.id}`,
-                tutorName: profile.full_name,
-                tutorEmail: profile.email || "",
-                tutorPhone: profile.phone || "",
-                tutorSocialMedia: profile.social_media || "",
-                tutorStatus: profile.status,
-                lgpdConsent: profile.lgpd_consent,
-                imagePublicationConsent: profile.image_publication_consent,
-                petName: pet.pet_name,
-                petSpecies: pet.species,
-                petBreed: pet.breed || "",
-                luckyNumber: pet.lucky_numbers?.[0]?.lucky_number || "",
-              });
-            });
-          } else {
-            transformedResults.push({
-              id: profile.id,
-              tutorName: profile.full_name,
-              tutorEmail: profile.email || "",
-              tutorPhone: profile.phone || "",
-              tutorSocialMedia: profile.social_media || "",
-              tutorStatus: profile.status,
-              lgpdConsent: profile.lgpd_consent,
-              imagePublicationConsent: profile.image_publication_consent,
-            });
-          }
-        });
-      } else if (searchType === "pet" && data) {
-        data.forEach((pet: any) => {
-          transformedResults.push({
-            id: pet.id,
-            tutorName: pet.profiles?.full_name || "",
-            tutorEmail: pet.profiles?.email || "",
-            tutorPhone: pet.profiles?.phone || "",
-            tutorSocialMedia: pet.profiles?.social_media || "",
-            tutorStatus: pet.profiles?.status || "",
-            lgpdConsent: pet.profiles?.lgpd_consent || false,
-            imagePublicationConsent: pet.profiles?.image_publication_consent || false,
-            petName: pet.pet_name,
-            petSpecies: pet.species,
-            petBreed: pet.breed || "",
-            luckyNumber: pet.lucky_numbers?.[0]?.lucky_number || "",
-          });
-        });
-      } else if (searchType === "numero" && data) {
-        data.forEach((lucky: any) => {
-          const pet = lucky.pets;
-          transformedResults.push({
-            id: pet.id,
-            tutorName: pet.profiles?.full_name || "",
-            tutorEmail: pet.profiles?.email || "",
-            tutorPhone: pet.profiles?.phone || "",
-            tutorSocialMedia: pet.profiles?.social_media || "",
-            tutorStatus: pet.profiles?.status || "",
-            lgpdConsent: pet.profiles?.lgpd_consent || false,
-            imagePublicationConsent: pet.profiles?.image_publication_consent || false,
-            petName: pet.pet_name,
-            petSpecies: pet.species,
-            petBreed: pet.breed || "",
-            luckyNumber: lucky.lucky_number,
-          });
-        });
-      }
+      // Transform RPC results to SearchResult format
+      const transformedResults: SearchResult[] = (data || []).map((item: any) => ({
+        id: `${item.tutor_id}-${item.pet_id}`,
+        tutorId: item.tutor_id,
+        tutorName: item.tutor_nome,
+        tutorEmail: item.email,
+        tutorPhone: item.telefone,
+        tutorSocialMedia: item.redes_sociais,
+        lgpdConsent: item.lgpd_consent,
+        imagePublicationConsent: item.image_publication_consent,
+        petId: item.pet_id,
+        petName: item.pet_nome,
+        petSpecies: item.especie,
+        petBreed: item.breed || "",
+        luckyNumber: item.numero_sorte,
+      }));
 
       setResults(transformedResults);
     } catch (error: any) {
@@ -250,42 +124,15 @@ export default function BuscaPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    variant={searchType === "tutor" ? "default" : "outline"}
-                    onClick={() => setSearchType("tutor")}
-                    className="flex items-center space-x-2"
-                  >
-                    <User className="w-4 h-4" />
-                    <span>Tutor</span>
-                  </Button>
-                  <Button
-                    variant={searchType === "pet" ? "default" : "outline"}
-                    onClick={() => setSearchType("pet")}
-                    className="flex items-center space-x-2"
-                  >
-                    <Heart className="w-4 h-4" />
-                    <span>Pet</span>
-                  </Button>
-                  <Button
-                    variant={searchType === "numero" ? "default" : "outline"}
-                    onClick={() => setSearchType("numero")}
-                    className="flex items-center space-x-2"
-                  >
-                    <Ticket className="w-4 h-4" />
-                    <span>Número da Sorte</span>
-                  </Button>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Pesquise por nome do tutor, nome do pet ou número da sorte
+                </p>
 
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
                     type="text"
-                    placeholder={
-                      searchType === "tutor" ? "Digite o nome ou e-mail do tutor..." :
-                      searchType === "pet" ? "Digite o nome do pet..." :
-                      "Digite o número da sorte..."
-                    }
+                    placeholder="Digite o termo de busca (nome do tutor, pet ou número)..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 h-12"
@@ -415,12 +262,6 @@ export default function BuscaPage() {
                   {selectedDetail.tutorSocialMedia && (
                     <p><span className="font-medium">Redes Sociais:</span> {selectedDetail.tutorSocialMedia}</p>
                   )}
-                  <p>
-                    <span className="font-medium">Status:</span>{" "}
-                    <span className={selectedDetail.tutorStatus === "active" ? "text-green-600" : "text-red-600"}>
-                      {selectedDetail.tutorStatus === "active" ? "Ativo" : "Inativo"}
-                    </span>
-                  </p>
                 </div>
               </div>
               
