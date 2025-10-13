@@ -4,12 +4,12 @@ import { Footer } from "@/components/ui/footer";
 import { TutorForm } from "@/components/forms/tutor-form";
 import { PetsForm } from "@/components/forms/pets-form";
 import { ColaboradorLogin } from "@/components/forms/colaborador-login";
+import { RegistrationSuccess } from "@/components/RegistrationSuccess";
 import { Card, CardContent } from "@/components/ui/card";
 import { TutorData, PetData } from "@/types/form-types";
-import { Check, User, Heart, PartyPopper } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Check, User, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 type Step = "tutor" | "pets" | "success";
 
@@ -17,6 +17,8 @@ export default function CadastroPage() {
   const [currentStep, setCurrentStep] = useState<Step>("tutor");
   const [tutorData, setTutorData] = useState<TutorData | null>(null);
   const [petsData, setPetsData] = useState<PetData[]>([]);
+  const [luckyNumbers, setLuckyNumbers] = useState<number[]>([]);
+  const [whatsappLink, setWhatsappLink] = useState<string>("");
   const { toast } = useToast();
 
   const handleTutorNext = (data: TutorData) => {
@@ -28,16 +30,83 @@ export default function CadastroPage() {
     setCurrentStep("tutor");
   };
 
-  const handlePetsSubmit = (data: PetData[]) => {
-    setPetsData(data);
-    
-    // Simulate form submission
-    toast({
-      title: "Inscrição realizada com sucesso! 🎉",
-      description: "Nos vemos no PETs DAY!",
-    });
-    
-    setCurrentStep("success");
+  const handlePetsSubmit = async (data: PetData[]) => {
+    try {
+      if (!tutorData) return;
+
+      setPetsData(data);
+
+      // Buscar evento padrão
+      const { data: eventos, error: eventoError } = await supabase
+        .from("eventos")
+        .select("*")
+        .limit(1)
+        .single();
+
+      if (eventoError) throw eventoError;
+
+      // Inserir tutor
+      const { data: tutorInserted, error: tutorError } = await supabase
+        .from("tutores")
+        .insert({
+          full_name: tutorData.nomeCompleto,
+          email: tutorData.email,
+          telefone: tutorData.telefone || null,
+          redes_sociais: tutorData.redesSociais || null,
+          lgpd_consent: tutorData.consentimentoLGPD,
+          image_publication_consent: tutorData.autorizacaoPublicacao || false,
+        })
+        .select()
+        .single();
+
+      if (tutorError) throw tutorError;
+
+      const generatedNumbers: number[] = [];
+
+      // Inserir pets e gerar números da sorte
+      for (const pet of data) {
+        // Inserir pet
+        const { data: petInserted, error: petError } = await supabase
+          .from("pets_tutor")
+          .insert({
+            tutor_id: tutorInserted.id,
+            pet_name: pet.nomePet,
+            especie: pet.tipo,
+            breed: null,
+          })
+          .select()
+          .single();
+
+        if (petError) throw petError;
+
+        // Gerar número da sorte
+        const { data: luckyNum, error: luckyError } = await supabase
+          .rpc("gerar_numero_sorte", {
+            pet_uuid: petInserted.id,
+            evento_uuid: eventos.id,
+          });
+
+        if (luckyError) throw luckyError;
+
+        generatedNumbers.push(luckyNum);
+      }
+
+      setLuckyNumbers(generatedNumbers);
+      setWhatsappLink(eventos.whatsapp_link || "");
+
+      toast({
+        title: "Inscrição realizada com sucesso! 🎉",
+        description: "Seus números da sorte foram gerados!",
+      });
+
+      setCurrentStep("success");
+    } catch (error: any) {
+      toast({
+        title: "Erro ao processar inscrição",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const steps = [
@@ -123,56 +192,13 @@ export default function CadastroPage() {
               />
             )}
 
-            {currentStep === "success" && (
-              <Card className="border-2 border-secondary">
-                <CardContent className="p-12 text-center space-y-8">
-                  <div className="space-y-4">
-                    <div className="w-24 h-24 mx-auto bg-gradient-to-r from-primary/10 to-secondary/10 rounded-full flex items-center justify-center">
-                      <PartyPopper className="w-12 h-12 text-secondary" />
-                    </div>
-                    
-                    <h2 className="text-3xl font-heading font-bold text-foreground">
-                      Inscrição realizada com <span className="gradient-text">sucesso!</span>
-                    </h2>
-                    
-                    <p className="text-lg text-muted-foreground font-body max-w-2xl mx-auto">
-                      Parabéns! Você e seu(s) pet(s) estão oficialmente inscritos no PETs DAY. 
-                      Em breve entraremos em contato com mais informações sobre o evento.
-                    </p>
-                  </div>
-
-                  {/* Summary */}
-                  <div className="bg-muted/50 rounded-xl p-6 max-w-md mx-auto space-y-4">
-                    <h3 className="font-heading font-semibold text-foreground">
-                      Resumo da Inscrição
-                    </h3>
-                    
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Tutor:</span>
-                        <span className="font-medium">{tutorData?.nomeCompleto}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Email:</span>
-                        <span className="font-medium">{tutorData?.email}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Pets cadastrados:</span>
-                        <span className="font-medium">{petsData.length}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Button asChild variant="outline" className="hover-lift">
-                      <Link to="/">Voltar ao Início</Link>
-                    </Button>
-                    <Button asChild className="hover-lift">
-                      <Link to="/patrocinadores">Conhecer Parceiros</Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+            {currentStep === "success" && tutorData && (
+              <RegistrationSuccess
+                tutorName={tutorData.nomeCompleto}
+                petNames={petsData.map(pet => pet.nomePet)}
+                luckyNumbers={luckyNumbers}
+                whatsappLink={whatsappLink}
+              />
             )}
           </div>
         </div>

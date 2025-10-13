@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const colaboradorSchema = z.object({
   email: z.string()
@@ -35,20 +36,44 @@ export function ColaboradorLogin() {
     }
   });
 
-  const onSubmit = (data: ColaboradorData) => {
-    // Simulação de validação - Em produção, validar com backend
-    console.log("Login colaborador:", data);
-    
-    toast({
-      title: "Login realizado com sucesso",
-      description: "Redirecionando para área de gestão...",
-    });
+  const onSubmit = async (data: ColaboradorData) => {
+    try {
+      // Autenticar via Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.senha,
+      });
 
-    // Redirecionar para página de busca/gestão
-    // TODO: Criar página de gestão de usuários
-    setTimeout(() => {
-      navigate("/");
-    }, 1000);
+      if (authError) throw authError;
+
+      // Verificar se é colaborador ativo
+      const { data: colaborador, error: colabError } = await supabase
+        .from("colaboradores")
+        .select("*")
+        .eq("auth_uid", authData.user.id)
+        .eq("status", true)
+        .maybeSingle();
+
+      if (colabError) throw colabError;
+
+      if (!colaborador) {
+        await supabase.auth.signOut();
+        throw new Error("Acesso negado. Apenas colaboradores podem acessar.");
+      }
+
+      toast({
+        title: "Login realizado com sucesso",
+        description: "Redirecionando para área de gestão...",
+      });
+
+      navigate("/busca");
+    } catch (error: any) {
+      toast({
+        title: "Erro no login",
+        description: error.message || "Credenciais inválidas",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

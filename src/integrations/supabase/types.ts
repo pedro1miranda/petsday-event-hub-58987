@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      colaboradores: {
+        Row: {
+          auth_uid: string | null
+          created_at: string | null
+          email: string
+          id: string
+          nome: string
+          senha_hash: string | null
+          status: boolean | null
+        }
+        Insert: {
+          auth_uid?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          nome: string
+          senha_hash?: string | null
+          status?: boolean | null
+        }
+        Update: {
+          auth_uid?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          nome?: string
+          senha_hash?: string | null
+          status?: boolean | null
+        }
+        Relationships: []
+      }
+      eventos: {
+        Row: {
+          created_at: string | null
+          data_evento: string | null
+          descricao: string | null
+          id: string
+          local_evento: string | null
+          lucky_number_counter: number | null
+          nome_evento: string
+          whatsapp_link: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_evento?: string | null
+          descricao?: string | null
+          id?: string
+          local_evento?: string | null
+          lucky_number_counter?: number | null
+          nome_evento: string
+          whatsapp_link?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_evento?: string | null
+          descricao?: string | null
+          id?: string
+          local_evento?: string | null
+          lucky_number_counter?: number | null
+          nome_evento?: string
+          whatsapp_link?: string | null
+        }
+        Relationships: []
+      }
       lucky_numbers: {
         Row: {
           generated_at: string | null
@@ -39,6 +102,45 @@ export type Database = {
             columns: ["pet_id"]
             isOneToOne: true
             referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lucky_numbers_tutor: {
+        Row: {
+          event_id: string
+          generated_at: string | null
+          id: string
+          lucky_number: number
+          pet_id: string
+        }
+        Insert: {
+          event_id: string
+          generated_at?: string | null
+          id?: string
+          lucky_number: number
+          pet_id: string
+        }
+        Update: {
+          event_id?: string
+          generated_at?: string | null
+          id?: string
+          lucky_number?: number
+          pet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lucky_numbers_tutor_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lucky_numbers_tutor_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets_tutor"
             referencedColumns: ["id"]
           },
         ]
@@ -72,6 +174,41 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      pets_tutor: {
+        Row: {
+          breed: string | null
+          created_at: string | null
+          especie: string | null
+          id: string
+          pet_name: string
+          tutor_id: string
+        }
+        Insert: {
+          breed?: string | null
+          created_at?: string | null
+          especie?: string | null
+          id?: string
+          pet_name: string
+          tutor_id: string
+        }
+        Update: {
+          breed?: string | null
+          created_at?: string | null
+          especie?: string | null
+          id?: string
+          pet_name?: string
+          tutor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pets_tutor_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "tutores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -112,6 +249,39 @@ export type Database = {
         }
         Relationships: []
       }
+      tutores: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          image_publication_consent: boolean | null
+          lgpd_consent: boolean | null
+          redes_sociais: string | null
+          telefone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name: string
+          id?: string
+          image_publication_consent?: boolean | null
+          lgpd_consent?: boolean | null
+          redes_sociais?: string | null
+          telefone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          image_publication_consent?: boolean | null
+          lgpd_consent?: boolean | null
+          redes_sociais?: string | null
+          telefone?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -135,9 +305,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      buscar_usuarios: {
+        Args: { search_term?: string }
+        Returns: {
+          breed: string
+          email: string
+          especie: string
+          image_publication_consent: boolean
+          lgpd_consent: boolean
+          numero_sorte: number
+          pet_id: string
+          pet_nome: string
+          redes_sociais: string
+          telefone: string
+          tutor_id: string
+          tutor_nome: string
+        }[]
+      }
       generate_lucky_number: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      gerar_numero_sorte: {
+        Args: { evento_uuid: string; pet_uuid: string }
+        Returns: number
       }
       has_role: {
         Args: {
