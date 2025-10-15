@@ -72,7 +72,7 @@ export function useAuth(requireStaff = false) {
     if (!loading && requireStaff) {
       if (!user) {
         toast.error("Você precisa fazer login para acessar esta página");
-        navigate("/auth");
+        navigate("/cadastro");
       } else if (!isStaff) {
         toast.error("Acesso negado. Apenas funcionários podem acessar.");
         navigate("/");
