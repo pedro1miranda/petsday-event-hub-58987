@@ -49,12 +49,9 @@ export default function CadastroPage() {
       const { data: tutorInserted, error: tutorError } = await supabase
         .from("tutores")
         .insert({
-          full_name: tutorData.nomeCompleto,
+          nome: tutorData.nomeCompleto,
           email: tutorData.email,
           telefone: tutorData.telefone || null,
-          redes_sociais: tutorData.redesSociais || null,
-          lgpd_consent: tutorData.consentimentoLGPD,
-          image_publication_consent: tutorData.autorizacaoPublicacao || false,
         })
         .select()
         .single();
@@ -63,32 +60,24 @@ export default function CadastroPage() {
 
       const generatedNumbers: number[] = [];
 
-      // Inserir pets e gerar números da sorte
+      // Inserir pets (número da sorte gerado automaticamente pelo trigger)
       for (const pet of data) {
-        // Inserir pet
         const { data: petInserted, error: petError } = await supabase
-          .from("pets_tutor")
+          .from("pets")
           .insert({
-            tutor_id: tutorInserted.id,
-            pet_name: pet.nomePet,
+            id_tutor: tutorInserted.id,
+            nome_pet: pet.nomePet,
             especie: pet.tipo,
-            breed: null,
+            raca: null,
+            idade: null,
+            numero_sorte: 0, // Será gerado automaticamente pelo trigger
           })
           .select()
           .single();
 
         if (petError) throw petError;
 
-        // Gerar número da sorte
-        const { data: luckyNum, error: luckyError } = await supabase
-          .rpc("gerar_numero_sorte", {
-            pet_uuid: petInserted.id,
-            evento_uuid: eventos.id,
-          });
-
-        if (luckyError) throw luckyError;
-
-        generatedNumbers.push(luckyNum);
+        generatedNumbers.push(petInserted.numero_sorte);
       }
 
       setLuckyNumbers(generatedNumbers);

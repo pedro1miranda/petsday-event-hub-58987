@@ -23,6 +23,7 @@ export type Database = {
           nome: string
           senha_hash: string | null
           status: boolean | null
+          updated_at: string | null
         }
         Insert: {
           auth_uid?: string | null
@@ -32,6 +33,7 @@ export type Database = {
           nome: string
           senha_hash?: string | null
           status?: boolean | null
+          updated_at?: string | null
         }
         Update: {
           auth_uid?: string | null
@@ -41,6 +43,7 @@ export type Database = {
           nome?: string
           senha_hash?: string | null
           status?: boolean | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -77,133 +80,41 @@ export type Database = {
         }
         Relationships: []
       }
-      lucky_numbers: {
-        Row: {
-          generated_at: string | null
-          id: string
-          lucky_number: string
-          pet_id: string
-        }
-        Insert: {
-          generated_at?: string | null
-          id?: string
-          lucky_number: string
-          pet_id: string
-        }
-        Update: {
-          generated_at?: string | null
-          id?: string
-          lucky_number?: string
-          pet_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lucky_numbers_pet_id_fkey"
-            columns: ["pet_id"]
-            isOneToOne: true
-            referencedRelation: "pets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lucky_numbers_tutor: {
-        Row: {
-          event_id: string
-          generated_at: string | null
-          id: string
-          lucky_number: number
-          pet_id: string
-        }
-        Insert: {
-          event_id: string
-          generated_at?: string | null
-          id?: string
-          lucky_number: number
-          pet_id: string
-        }
-        Update: {
-          event_id?: string
-          generated_at?: string | null
-          id?: string
-          lucky_number?: number
-          pet_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lucky_numbers_tutor_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "eventos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lucky_numbers_tutor_pet_id_fkey"
-            columns: ["pet_id"]
-            isOneToOne: false
-            referencedRelation: "pets_tutor"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       pets: {
         Row: {
-          breed: string | null
           created_at: string | null
+          especie: string
           id: string
-          owner_id: string
-          pet_name: string
-          species: Database["public"]["Enums"]["pet_species"]
-          updated_at: string | null
+          id_tutor: string
+          idade: number | null
+          nome_pet: string
+          numero_sorte: number
+          raca: string | null
         }
         Insert: {
-          breed?: string | null
           created_at?: string | null
+          especie: string
           id?: string
-          owner_id: string
-          pet_name: string
-          species: Database["public"]["Enums"]["pet_species"]
-          updated_at?: string | null
+          id_tutor: string
+          idade?: number | null
+          nome_pet: string
+          numero_sorte?: number
+          raca?: string | null
         }
         Update: {
-          breed?: string | null
           created_at?: string | null
+          especie?: string
           id?: string
-          owner_id?: string
-          pet_name?: string
-          species?: Database["public"]["Enums"]["pet_species"]
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      pets_tutor: {
-        Row: {
-          breed: string | null
-          created_at: string | null
-          especie: string | null
-          id: string
-          pet_name: string
-          tutor_id: string
-        }
-        Insert: {
-          breed?: string | null
-          created_at?: string | null
-          especie?: string | null
-          id?: string
-          pet_name: string
-          tutor_id: string
-        }
-        Update: {
-          breed?: string | null
-          created_at?: string | null
-          especie?: string | null
-          id?: string
-          pet_name?: string
-          tutor_id?: string
+          id_tutor?: string
+          idade?: number | null
+          nome_pet?: string
+          numero_sorte?: number
+          raca?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "pets_tutor_tutor_id_fkey"
-            columns: ["tutor_id"]
+            foreignKeyName: "pets_id_tutor_fkey"
+            columns: ["id_tutor"]
             isOneToOne: false
             referencedRelation: "tutores"
             referencedColumns: ["id"]
@@ -253,32 +164,26 @@ export type Database = {
         Row: {
           created_at: string | null
           email: string
-          full_name: string
           id: string
-          image_publication_consent: boolean | null
-          lgpd_consent: boolean | null
-          redes_sociais: string | null
+          nome: string
           telefone: string | null
+          updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           email: string
-          full_name: string
           id?: string
-          image_publication_consent?: boolean | null
-          lgpd_consent?: boolean | null
-          redes_sociais?: string | null
+          nome: string
           telefone?: string | null
+          updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           email?: string
-          full_name?: string
           id?: string
-          image_publication_consent?: boolean | null
-          lgpd_consent?: boolean | null
-          redes_sociais?: string | null
+          nome?: string
           telefone?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -308,15 +213,13 @@ export type Database = {
       buscar_usuarios: {
         Args: { search_term?: string }
         Returns: {
-          breed: string
           email: string
           especie: string
-          image_publication_consent: boolean
-          lgpd_consent: boolean
+          idade: number
           numero_sorte: number
           pet_id: string
           pet_nome: string
-          redes_sociais: string
+          raca: string
           telefone: string
           tutor_id: string
           tutor_nome: string
@@ -326,8 +229,8 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      gerar_numero_sorte: {
-        Args: { evento_uuid: string; pet_uuid: string }
+      gerar_numero_sorte_simples: {
+        Args: Record<PropertyKey, never>
         Returns: number
       }
       has_role: {

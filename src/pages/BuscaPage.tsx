@@ -3,11 +3,11 @@ import { Footer } from "@/components/ui/footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, User, Heart, Ticket, LogOut, Phone, Mail } from "lucide-react";
+import { Search, LogOut, Phone, Mail } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -17,28 +17,33 @@ import {
 } from "@/components/ui/dialog";
 
 type SearchResult = {
-  id: string;
-  tutorId: string;
-  tutorName: string;
-  tutorEmail: string;
-  tutorPhone: string;
-  tutorSocialMedia: string;
-  lgpdConsent: boolean;
-  imagePublicationConsent: boolean;
-  petId: string;
-  petName: string;
-  petSpecies: string;
-  petBreed: string;
-  luckyNumber: number | null;
+  tutor_id: string;
+  tutor_nome: string;
+  pet_id: string;
+  pet_nome: string;
+  especie: string;
+  raca: string;
+  idade: number | null;
+  numero_sorte: number;
+  telefone: string;
+  email: string;
 };
 
 export default function BuscaPage() {
-  const { user, isStaff, loading, signOut } = useAuth(true);
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<SearchResult | null>(null);
+
+  // Verificar autenticação
+  useEffect(() => {
+    const colaboradorEmail = localStorage.getItem('colaborador_email');
+    if (!colaboradorEmail) {
+      toast.error("Você precisa fazer login como colaborador");
+      navigate("/cadastro");
+    }
+  }, [navigate]);
 
   useEffect(() => {
     if (searchTerm.trim()) {
@@ -53,30 +58,12 @@ export default function BuscaPage() {
 
     setIsSearching(true);
     try {
-      // Call the RPC function instead of direct table queries
       const { data, error } = await supabase
         .rpc('buscar_usuarios', { search_term: searchTerm });
 
       if (error) throw error;
 
-      // Transform RPC results to SearchResult format
-      const transformedResults: SearchResult[] = (data || []).map((item: any) => ({
-        id: `${item.tutor_id}-${item.pet_id}`,
-        tutorId: item.tutor_id,
-        tutorName: item.tutor_nome,
-        tutorEmail: item.email,
-        tutorPhone: item.telefone,
-        tutorSocialMedia: item.redes_sociais,
-        lgpdConsent: item.lgpd_consent,
-        imagePublicationConsent: item.image_publication_consent,
-        petId: item.pet_id,
-        petName: item.pet_nome,
-        petSpecies: item.especie,
-        petBreed: item.breed || "",
-        luckyNumber: item.numero_sorte,
-      }));
-
-      setResults(transformedResults);
+      setResults(data || []);
     } catch (error: any) {
       console.error("Search error:", error);
       toast.error("Erro ao buscar dados: " + error.message);
@@ -85,20 +72,18 @@ export default function BuscaPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
-      </div>
-    );
-  }
+  const handleLogout = () => {
+    localStorage.removeItem('colaborador_email');
+    toast.success("Logout realizado com sucesso");
+    navigate("/");
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="container mx-auto px-4 pt-4 flex justify-end">
-        <Button variant="outline" onClick={signOut} className="flex items-center gap-2">
+        <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2">
           <LogOut className="w-4 h-4" />
           Sair
         </Button>
@@ -158,45 +143,46 @@ export default function BuscaPage() {
                 ) : results.length > 0 ? (
                   <div className="grid gap-4">
                     {results.map((result) => (
-                      <Card key={result.id} className="hover:shadow-lg transition-shadow">
+                      <Card key={`${result.tutor_id}-${result.pet_id}`} className="hover:shadow-lg transition-shadow">
                         <CardContent className="p-6">
                           <div className="space-y-4">
                             <div className="flex justify-between items-start">
                               <div className="space-y-2 flex-1">
                                 <h4 className="text-xl font-heading font-semibold text-foreground">
-                                  {result.tutorName}
+                                  {result.tutor_nome}
                                 </h4>
                                 <div className="space-y-1 text-sm text-muted-foreground">
-                                  {result.tutorEmail && (
+                                  {result.email && (
                                     <p className="flex items-center gap-2">
                                       <Mail className="w-4 h-4" />
-                                      {result.tutorEmail}
+                                      {result.email}
                                     </p>
                                   )}
-                                  {result.tutorPhone && (
+                                  {result.telefone && (
                                     <p className="flex items-center gap-2">
                                       <Phone className="w-4 h-4" />
-                                      {result.tutorPhone}
+                                      {result.telefone}
                                     </p>
                                   )}
                                 </div>
-                                {result.petName && (
+                                {result.pet_nome && (
                                   <div className="pt-2 border-t">
                                     <p className="text-sm font-medium text-foreground">
-                                      Pet: {result.petName}
+                                      Pet: {result.pet_nome}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                      {result.petSpecies} {result.petBreed && `- ${result.petBreed}`}
+                                      {result.especie} {result.raca && `- ${result.raca}`}
+                                      {result.idade && ` - ${result.idade} anos`}
                                     </p>
                                   </div>
                                 )}
                               </div>
                               <div className="flex flex-col gap-2 items-end">
-                                {result.luckyNumber && (
+                                {result.numero_sorte && (
                                   <div className="bg-secondary/10 rounded-lg px-4 py-2">
                                     <p className="text-xs text-muted-foreground mb-1">Número da Sorte</p>
                                     <p className="text-lg font-bold font-heading text-secondary">
-                                      {result.luckyNumber}
+                                      {result.numero_sorte}
                                     </p>
                                   </div>
                                 )}
@@ -232,7 +218,7 @@ export default function BuscaPage() {
                 Digite algo para começar a busca
               </h3>
               <p className="text-muted-foreground font-body">
-                Selecione o tipo de busca e digite o termo desejado
+                Digite o nome do tutor, pet ou número da sorte
               </p>
             </div>
           )}
@@ -244,7 +230,7 @@ export default function BuscaPage() {
           <DialogHeader>
             <DialogTitle>Detalhes do Cadastro</DialogTitle>
             <DialogDescription>
-              Informações completas sobre o tutor
+              Informações completas do tutor e pet
             </DialogDescription>
           </DialogHeader>
           {selectedDetail && (
@@ -252,44 +238,30 @@ export default function BuscaPage() {
               <div>
                 <h4 className="font-semibold text-foreground mb-2">Informações do Tutor</h4>
                 <div className="space-y-2 text-sm">
-                  <p><span className="font-medium">Nome:</span> {selectedDetail.tutorName}</p>
-                  {selectedDetail.tutorEmail && (
-                    <p><span className="font-medium">E-mail:</span> {selectedDetail.tutorEmail}</p>
+                  <p><span className="font-medium">Nome:</span> {selectedDetail.tutor_nome}</p>
+                  {selectedDetail.email && (
+                    <p><span className="font-medium">E-mail:</span> {selectedDetail.email}</p>
                   )}
-                  {selectedDetail.tutorPhone && (
-                    <p><span className="font-medium">Telefone:</span> {selectedDetail.tutorPhone}</p>
+                  {selectedDetail.telefone && (
+                    <p><span className="font-medium">Telefone:</span> {selectedDetail.telefone}</p>
                   )}
-                  {selectedDetail.tutorSocialMedia && (
-                    <p><span className="font-medium">Redes Sociais:</span> {selectedDetail.tutorSocialMedia}</p>
-                  )}
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold text-foreground mb-2">Permissões</h4>
-                <div className="space-y-1 text-sm">
-                  <p>
-                    <span className="font-medium">LGPD:</span>{" "}
-                    {selectedDetail.lgpdConsent ? "✅ Aceito" : "❌ Não aceito"}
-                  </p>
-                  <p>
-                    <span className="font-medium">Publicação de Imagens:</span>{" "}
-                    {selectedDetail.imagePublicationConsent ? "✅ Autorizado" : "❌ Não autorizado"}
-                  </p>
                 </div>
               </div>
 
-              {selectedDetail.petName && (
+              {selectedDetail.pet_nome && (
                 <div>
                   <h4 className="font-semibold text-foreground mb-2">Informações do Pet</h4>
                   <div className="space-y-1 text-sm">
-                    <p><span className="font-medium">Nome:</span> {selectedDetail.petName}</p>
-                    <p><span className="font-medium">Espécie:</span> {selectedDetail.petSpecies}</p>
-                    {selectedDetail.petBreed && (
-                      <p><span className="font-medium">Raça:</span> {selectedDetail.petBreed}</p>
+                    <p><span className="font-medium">Nome:</span> {selectedDetail.pet_nome}</p>
+                    <p><span className="font-medium">Espécie:</span> {selectedDetail.especie}</p>
+                    {selectedDetail.raca && (
+                      <p><span className="font-medium">Raça:</span> {selectedDetail.raca}</p>
                     )}
-                    {selectedDetail.luckyNumber && (
-                      <p><span className="font-medium">Número da Sorte:</span> {selectedDetail.luckyNumber}</p>
+                    {selectedDetail.idade && (
+                      <p><span className="font-medium">Idade:</span> {selectedDetail.idade} anos</p>
+                    )}
+                    {selectedDetail.numero_sorte && (
+                      <p><span className="font-medium">Número da Sorte:</span> {selectedDetail.numero_sorte}</p>
                     )}
                   </div>
                 </div>
