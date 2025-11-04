@@ -26,10 +26,10 @@ export function Navigation({ className }: NavigationProps) {
             Sobre
           </Link>
           <Link 
-            to="/patrocinadores" 
+            to="/quem-somos" 
             className="text-muted-foreground hover:text-primary transition-colors font-body"
           >
-            Patrocinadores
+            Quem somos
           </Link>
           <Button asChild variant="default" className="hover-lift">
             <Link to="/cadastro">Inscreva-se</Link>

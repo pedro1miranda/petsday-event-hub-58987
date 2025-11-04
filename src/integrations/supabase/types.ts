@@ -225,14 +225,8 @@ export type Database = {
           tutor_nome: string
         }[]
       }
-      generate_lucky_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      gerar_numero_sorte_simples: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      generate_lucky_number: { Args: never; Returns: string }
+      gerar_numero_sorte_simples: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
