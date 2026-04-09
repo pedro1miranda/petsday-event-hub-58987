@@ -21,6 +21,58 @@ export default function CadastroPage() {
   const [whatsappLink, setWhatsappLink] = useState<string>("");
   const { toast } = useToast();
 
+  const fetchDefaultEvent = async () => {
+    const { data, error } = await supabase
+      .from("eventos")
+      .select("whatsapp_link")
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return data;
+  };
+
+  const createTutor = async (data: TutorData) => {
+    const tutorId = crypto.randomUUID();
+
+    const { error } = await supabase.from("tutores").insert({
+      id: tutorId,
+      nome: data.nomeCompleto,
+      email: data.email,
+      telefone: data.telefone || null,
+    });
+
+    if (error) throw error;
+
+    return tutorId;
+  };
+
+  const createPet = async (tutorId: string, pet: PetData) => {
+    const { data: luckyNumber, error: luckyNumberError } = await supabase.rpc(
+      "gerar_numero_sorte_simples"
+    );
+
+    if (luckyNumberError) throw luckyNumberError;
+    if (typeof luckyNumber !== "number") {
+      throw new Error("Não foi possível gerar o número da sorte.");
+    }
+
+    const { error: petError } = await supabase.from("pets").insert({
+      id: crypto.randomUUID(),
+      id_tutor: tutorId,
+      nome_pet: pet.nomePet,
+      especie: pet.tipo,
+      raca: null,
+      idade: null,
+      numero_sorte: luckyNumber,
+    });
+
+    if (petError) throw petError;
+
+    return luckyNumber;
+  };
+
   const handleTutorNext = (data: TutorData) => {
     setTutorData(data);
     setCurrentStep("pets");
@@ -34,54 +86,21 @@ export default function CadastroPage() {
     try {
       if (!tutorData) return;
 
-      setPetsData(data);
-
-      // Buscar evento padrão
-      const { data: eventos, error: eventoError } = await supabase
-        .from("eventos")
-        .select("*")
-        .limit(1)
-        .single();
-
-      if (eventoError) throw eventoError;
-
-      // Inserir tutor
-      const { data: tutorInserted, error: tutorError } = await supabase
-        .from("tutores")
-        .insert({
-          nome: tutorData.nomeCompleto,
-          email: tutorData.email,
-          telefone: tutorData.telefone || null,
-        })
-        .select()
-        .single();
-
-      if (tutorError) throw tutorError;
+      const [evento, tutorId] = await Promise.all([
+        fetchDefaultEvent(),
+        createTutor(tutorData),
+      ]);
 
       const generatedNumbers: number[] = [];
 
-      // Inserir pets (número da sorte gerado automaticamente pelo trigger)
       for (const pet of data) {
-        const { data: petInserted, error: petError } = await supabase
-          .from("pets")
-          .insert({
-            id_tutor: tutorInserted.id,
-            nome_pet: pet.nomePet,
-            especie: pet.tipo,
-            raca: null,
-            idade: null,
-            numero_sorte: 0, // Será gerado automaticamente pelo trigger
-          })
-          .select()
-          .single();
-
-        if (petError) throw petError;
-
-        generatedNumbers.push(petInserted.numero_sorte);
+        const luckyNumber = await createPet(tutorId, pet);
+        generatedNumbers.push(luckyNumber);
       }
 
+      setPetsData(data);
       setLuckyNumbers(generatedNumbers);
-      setWhatsappLink(eventos.whatsapp_link || "");
+      setWhatsappLink(evento?.whatsapp_link || "");
 
       toast({
         title: "Inscrição realizada com sucesso! 🎉",
